@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UUID生成器</title>
+  <!-- 引入 Tailwind CSS（CDN 方式，也可本地安装） -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* 自定义图标样式（用伪元素实现，无需额外字体库） */
+    .icon {
+      display: inline-block;
+      width: 1em;
+      height: 1em;
+      vertical-align: middle;
+      background-size: 100% 100%;
+      margin-right: 0.3em;
+    }
+    .icon-copy {
+      background-image: url('data:image/svg+xml;charset=UTF-8,<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.25 7.5V6a3.75 3.75 0 10-7.5 0v1.5m15 0V6a3.75 3.75 0 10-7.5 0v1.5m0 10.5A3.75 3.75 0 0012 16.5a3.75 3.75 0 003.75 3.75 3.75 3.75 0 003.75-3.75z"/></svg>');
+    }
+    .icon-refresh {
+      background-image: url('data:image/svg+xml;charset=UTF-8,<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>');
+    }
+    .icon-trash {
+      background-image: url('data:image/svg+xml;charset=UTF-8,<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>');
+    }
+    .icon-check {
+      background-image: url('data:image/svg+xml;charset=UTF-8,<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>');
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col items-center justify-center p-4">
+  <div class="max-w-xl w-full">
+    <!-- 标题区域 -->
+    <div class="text-center mb-6">
+      <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">UUID生成器</h1>
+      <p class="text-gray-500">快速生成符合标准的UUID，支持一键复制 & 历史记录</p>
+    </div>
+
+    <!-- 主卡片：生成 + 复制 -->
+    <div class="bg-white rounded-lg shadow p-5 mb-5">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-3">
+        <!-- UUID 显示 + 复制 -->
+        <div class="flex-1">
+          <label class="block text-sm font-medium text-gray-700 mb-1">生成的UUID</label>
+          <div class="relative">
+            <input type="text" id="uuid" class="w-full border border-gray-300 rounded-md p-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" readonly />
+            <button id="copyBtn" class="absolute right-2 top-1/2 -translate-y-1/2 bg-green-500 text-white text-sm font-medium px-3 py-1.5 rounded-md hover:bg-green-600 transition-colors">
+              <span class="icon icon-copy"></span>复制
+            </button>
+          </div>
+        </div>
+
+        <!-- 生成按钮 -->
+        <button id="generateBtn" class="bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-md hover:bg-blue-600 transition-colors">
+          <span class="icon icon-refresh"></span>生成UUID
+        </button>
+      </div>
+
+      <!-- 复制提示（默认隐藏） -->
+      <div id="copyToast" class="mt-3 bg-green-100 text-green-700 text-sm px-3 py-2 rounded-md flex items-center gap-2 justify-center hidden">
+        <span class="icon icon-check"></span>已复制到剪贴板
+      </div>
+    </div>
+
+    <!-- 历史记录卡片 -->
+    <div class="bg-white rounded-lg shadow p-5">
+      <h2 class="text-lg font-medium text-gray-800 mb-3">生成历史</h2>
+      <div id="historyList" class="max-h-32 overflow-y-auto space-y-2 p-2">
+        <p class="text-gray-400 text-sm italic text-center">暂无历史记录</p>
+      </div>
+      <button id="clearHistory" class="mt-2 text-sm text-gray-500 hover:text-red-500 transition-colors flex items-center gap-1">
+        <span class="icon icon-trash"></span>清空历史
+      </button>
+    </div>
+
+    <!-- 底部说明 -->
+    <div class="mt-6 text-center text-sm text-gray-500">
+      <p>UUID（通用唯一识别码）是一种用于计算机系统中唯一标识信息的128位数字，常用于接口参数、数据库主键等场景。</p>
+    </div>
+  </div>
+
+  <!-- 核心逻辑脚本 -->
+  <script>
+    // 生成 UUID（v4 标准）
+    function generateUUID() {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
+
+    // DOM 元素缓存
+    const uuidInput = document.getElementById('uuid');
+    const generateBtn = document.getElementById('generateBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const copyToast = document.getElementById('copyToast');
+    const historyList = document.getElementById('historyList');
+    const clearHistoryBtn = document.getElementById('clearHistory');
+
+    // 历史记录数组（本地临时存储，可扩展 localStorage 持久化）
+    let historyRecords = [];
+
+    // 生成 UUID 并更新界面
+    function generateAndUpdate() {
+      const newUUID = generateUUID();
+      uuidInput.value = newUUID;
+      addToHistory(newUUID);
+    }
+
+    // 添加到历史记录
+    function addToHistory(uuid) {
+      // 构造记录：含时间 + UUID
+      const record = {
+        uuid: uuid,
+        time: new Date().toLocaleString() // 格式化时间：2025/8/24 10:49:00
+      };
+      // 保持最多 10 条记录
+      historyRecords.unshift(record);
+      if (historyRecords.length > 10) {
+        historyRecords.pop();
+      }
+      // 更新界面
+      renderHistory();
+    }
+
+    // 渲染历史记录
+    function renderHistory() {
+      if (historyRecords.length === 0) {
+        historyList.innerHTML = '<p class="text-gray-400 text-sm italic text-center">暂无历史记录</p>';
+        return;
+      }
+      // 拼接 HTML
+      const html = historyRecords.map(item => `
+        <div class="flex items-center justify-between bg-gray-50 p-2 rounded-md text-sm">
+          <span class="text-gray-700 font-mono truncate">${item.uuid}</span>
+          <span class="text-gray-500">${item.time}</span>
+        </div>
+      `).join('');
+      historyList.innerHTML = html;
+    }
+
+    // 复制到剪贴板
+    async function copyToClipboard() {
+      const text = uuidInput.value;
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+        // 显示提示
+        copyToast.classList.remove('hidden');
+        setTimeout(() => {
+          copyToast.classList.add('hidden');
+        }, 2000);
+      } catch (err) {
+        alert('复制失败，请手动选择复制～');
+        console.error('复制出错：', err);
+      }
+    }
+
+    // 清空历史
+    function clearHistory() {
+      historyRecords = [];
+      renderHistory();
+    }
+
+    // 事件绑定
+    generateBtn.addEventListener('click', generateAndUpdate);
+    copyBtn.addEventListener('click', copyToClipboard);
+    clearHistoryBtn.addEventListener('click', clearHistory);
+
+    // 初始生成一个 UUID
+    generateAndUpdate();
+  </script>
+</body>
+</html>
